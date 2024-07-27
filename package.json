@@ -1,0 +1,20 @@
+{
+  "name": "youtubetwittermix",
+  "version": "1.0.0",
+  "description": "a backend practice in developing a clone of youtube and twitter in one project",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "javascript",
+    "backend"
+  ],
+  "author": "Hammad",
+  "license": "ISC",
+  "dependencies": {
+    "D": "^1.0.0",
+    "nodemon": "^3.1.4"
+  }
+}
