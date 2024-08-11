@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import {ApiResponse} from "../utils/ApiResponse.js"
+import { ApiResponse } from "../utils/ApiResponse.js";
 //get user details frm fronend depend on user model
 //validation--empty
 //check if user already exist
@@ -40,23 +40,23 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "avatar file is required");
   }
 
- const user=await User.create({
+  const user = await User.create({
     fulName,
-    avatar:avatar.url,
-    coverImage:coverImage?.url || "",
+    avatar: avatar.url,
+    coverImage: coverImage?.url || "",
     email,
     password,
-    username:username.toLowerCase()
-})
-const createdUser=await User.findById(user._id).select( "-password -refreshToken")
-if(!createdUser)
-{
-    throw new ApiError(500,"registering user error")
-}
-return res.status(201).json(
-    new ApiResponse(201,createdUser,"User registered successfully")
-)
-
+    username: username.toLowerCase(),
+  });
+  const createdUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+  if (!createdUser) {
+    throw new ApiError(500, "registering user error");
+  }
+  return res
+    .status(201)
+    .json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
 
 export { registerUser };
