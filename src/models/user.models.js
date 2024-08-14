@@ -26,7 +26,7 @@ const userSchema = new Schema(
     },
     avatar: {
       type: String, //clodinary
-      required: trusted,
+      required: true,
     },
     coverImage: {
       type: String,

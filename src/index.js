@@ -1,6 +1,6 @@
 //require("dotenv").config({ path: "./env" });
 import dotenv from "dotenv";
-dotenv.config({ path: "./env" });
+dotenv.config({ path: "./.env" });
 import connection from "./db/connection.db.js";
 import { app } from "./app.js";
 
