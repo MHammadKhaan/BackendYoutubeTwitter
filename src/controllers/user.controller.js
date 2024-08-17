@@ -45,14 +45,14 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User already exist");
   }
 
-  const avatarLocatPath = req.files?.avatar[0]?.path; //on the server not on cloudinary
+  const avatarLocalPath = req.files?.avatar[0]?.path; //on the server not on cloudinary
   const coverImageLocalPAth = req.files?.coverImage[0]?.path;
 
-  if (!avatarLocatPath) {
+  if (!avatarLocalPath) {
     throw new ApiError(400, "avatar file is required");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocatPath);
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = await uploadOnCloudinary(coverImageLocalPAth);
   if (!avatar) {
     throw new ApiError(400, "avatar file is required");
@@ -127,7 +127,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { refreshToken: undefined },
+      $unset: { refreshToken: 1 },
     },
     {
       new: true,
@@ -288,6 +288,8 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 //aggregation pipeline getting user profile channel
 const getUserChannelProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
+  console.log(username);
+
   if (!username?.trim()) {
     throw new ApiError(400, "username is missing");
   }
@@ -351,9 +353,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, channel[0], "user channel fetched"));
 });
-
 // watch history using nested aggregation pipeline
 const getWatchHistory = asyncHandler(async (req, res) => {
+  console.log("hit");
+
   const user = await User.aggregate([
     {
       $match: {
@@ -385,17 +388,26 @@ const getWatchHistory = asyncHandler(async (req, res) => {
             },
           },
           {
-            owner: {
-              $first: "$owner",
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
             },
           },
         ],
       },
     },
   ]);
+
   return res
     .status(200)
-    .json(new ApiResponse(200, user[0].watchHistory, "watch history fetched"));
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch history fetched successfully"
+      )
+    );
 });
 
 export {
