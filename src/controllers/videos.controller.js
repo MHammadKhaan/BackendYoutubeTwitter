@@ -164,6 +164,8 @@ const getDetailVideoById = asyncHandler(async (req, res) => {
   });
   // loop to each stage and log
   const pipeline = video._pipeline;
+  console.log("Pipeline!!!", pipeline);
+
   pipeline.forEach((stage, index) => {
     console.log(`Stage ${index + 1}:`, stage);
   });
@@ -287,10 +289,42 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
       new ApiResponse(200, togglePublish, "successfully updated status !!")
     );
 });
+
+const getAllVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+
+  //: get all videos based on query, sort, pagination
+
+  if (!query) {
+    console.log("query not gete");
+  }
+  const pipeline = [];
+  if (query) {
+    pipeline.push({
+      $search: {
+        index: "search-index",
+        text: {
+          query: query,
+          path: ["title", "description"],
+        },
+      },
+    });
+  }
+  if (pipeline.length == 0) {
+    console.log("no doc found");
+  }
+
+  const videoAggregate = Video.aggregate(pipeline);
+  if (videoAggregate.l)
+    return res
+      .status(200)
+      .json(new ApiResponse(200, videoAggregate, "search done"));
+});
 export {
   publishVideo,
   getDetailVideoById,
   updateVideo,
   deleteVideo,
   togglePublishStatus,
+  getAllVideos,
 };
