@@ -3,6 +3,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import {
   deleteVideo,
+  getAllVideos,
   getDetailVideoById,
   publishVideo,
   togglePublishStatus,
@@ -10,7 +11,8 @@ import {
 } from "../controllers/videos.controller.js";
 const router = Router();
 router.use(verifyJWT); //apply jwt to all routes in this file
-router.route("/create").post(
+router.route("/create").get(getAllVideos)
+.post(
   upload.fields([
     verifyJWT,
     {
