@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
-import { getDetailVideoById, publishVideo } from "../controllers/videos.controller.js";
+import {
+  deleteVideo,
+  getDetailVideoById,
+  publishVideo,
+  togglePublishStatus,
+  updateVideo,
+} from "../controllers/videos.controller.js";
 const router = Router();
 router.use(verifyJWT); //apply jwt to all routes in this file
 router.route("/create").post(
@@ -18,5 +24,10 @@ router.route("/create").post(
   ]),
   publishVideo
 );
-router.route("/:videoId").get(getDetailVideoById);
+router
+  .route("/:videoId")
+  .get(getDetailVideoById)
+  .patch(upload.single("thumbnail"), updateVideo)
+  .delete(deleteVideo);
+router.route("/toggle/publish/:videoId").patch(togglePublishStatus);
 export default router;
