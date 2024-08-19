@@ -61,7 +61,7 @@ const getDetailVideoById = asyncHandler(async (req, res) => {
   if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "video is not valid");
   }
-  const video = Video.aggregate([
+  const video = await Video.aggregate([
     {
       $match: {
         _id: new mongoose.Types.ObjectId(videoId),
@@ -294,10 +294,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
 
   //: get all videos based on query, sort, pagination
-
-  if (!query) {
-    console.log("query not gete");
-  }
   const pipeline = [];
   if (query) {
     pipeline.push({
@@ -310,15 +306,77 @@ const getAllVideos = asyncHandler(async (req, res) => {
       },
     });
   }
-  if (pipeline.length == 0) {
-    console.log("no doc found");
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid userId");
+  }
+  pipeline.push({
+    $match: { owner: new mongoose.Types.ObjectId(userId) },
+  });
+  pipeline.push({
+    $match: { isPublished: true },
+  });
+  //sortBy can be views, createdAt, duration
+  //sortType can be ascending(-1) or descending(1)
+  if (sortBy && sortType) {
+    pipeline.push({
+      $sort: {
+        [sortBy]: sortType === "asc" ? 1 : -1,
+      },
+    });
+  } else {
+    pipeline.push({
+      $sort: {
+        createdAt: -1,
+      },
+    });
   }
 
-  const videoAggregate = Video.aggregate(pipeline);
-    return res
-      .status(200)
-      .json(new ApiResponse(200, videoAggregate, "search done"));
+  // video owner detail
+  pipeline.push(
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerDetail",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              "avatar.url": 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$ownerDetail",
+    }
+  );
+
+  const videoAggregate = await Video.aggregate(pipeline);
+  console.log(videoAggregate.length);
+
+  if (videoAggregate.length === 0) {
+    throw new ApiError(400, "no doc found ");
+  }
+  const options = {
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+  // const video = await Video.aggregatePaginate(videoAggregate, options);
+  //pagination not done error take alot of time
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        videoAggregate,
+        "the search video is fetched successfully"
+      )
+    );
 });
+
 export {
   publishVideo,
   getDetailVideoById,
