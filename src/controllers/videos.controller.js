@@ -163,13 +163,7 @@ const getDetailVideoById = asyncHandler(async (req, res) => {
     },
   });
   // loop to each stage and log
-  const pipeline = video._pipeline;
-  console.log("Pipeline!!!", pipeline);
-
-  pipeline.forEach((stage, index) => {
-    console.log(`Stage ${index + 1}:`, stage);
-  });
-
+  
   return res
     .status(200)
     .json(new ApiResponse(200, video, "video details fetched successfully"));
