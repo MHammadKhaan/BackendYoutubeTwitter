@@ -163,7 +163,7 @@ const getDetailVideoById = asyncHandler(async (req, res) => {
     },
   });
   // loop to each stage and log
-  
+
   return res
     .status(200)
     .json(new ApiResponse(200, video, "video details fetched successfully"));
@@ -284,93 +284,81 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     );
 });
 
-const getAllVideos = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
 
-  //: get all videos based on query, sort, pagination
+const getAllVideos = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    query,
+    sortBy = "createdAt",
+    sortType = "desc",
+    userId,
+  } = req.query;
+  const sort = {};
+  sort[sortBy] = sortType === "asc" ? 1 : -1;
+
   const pipeline = [];
+
+  // Search Stage
   if (query) {
     pipeline.push({
-      $search: {
-        index: "search-index",
-        text: {
-          query: query,
-          path: ["title", "description"],
-        },
-      },
-    });
-  }
-  if (!isValidObjectId(userId)) {
-    throw new ApiError(400, "Invalid userId");
-  }
-  pipeline.push({
-    $match: { owner: new mongoose.Types.ObjectId(userId) },
-  });
-  pipeline.push({
-    $match: { isPublished: true },
-  });
-  //sortBy can be views, createdAt, duration
-  //sortType can be ascending(-1) or descending(1)
-  if (sortBy && sortType) {
-    pipeline.push({
-      $sort: {
-        [sortBy]: sortType === "asc" ? 1 : -1,
-      },
-    });
-  } else {
-    pipeline.push({
-      $sort: {
-        createdAt: -1,
+      // $match: {
+      //     $or: [
+      //         { title: { $regex: query, $options: "i" } },
+      //         { description: { $regex: query, $options: "i" } },
+      //     ],
+      // },
+      $match: {
+        $text: { $search: query },
       },
     });
   }
 
-  // video owner detail
+  // Match isPublished
+  pipeline.push({ $match: { isPublished: true } });
+
+  // Sort Stage
+  pipeline.push({ $sort: sort });
+
+  // Lookups
   pipeline.push(
     {
       $lookup: {
         from: "users",
         localField: "owner",
         foreignField: "_id",
-        as: "ownerDetail",
+        as: "ownerDetails",
         pipeline: [
           {
             $project: {
               username: 1,
-              "avatar.url": 1,
+              fullName: 1,
+              avatar: 1,
             },
           },
         ],
       },
     },
     {
-      $unwind: "$ownerDetail",
+      $addFields: {
+        ownerDetails: { $first: "$ownerDetails" },
+      },
     }
   );
 
-  const videoAggregate = await Video.aggregate(pipeline);
-  console.log(videoAggregate.length);
+  const videoAggregate = Video.aggregate(pipeline);
 
-  if (videoAggregate.length === 0) {
-    throw new ApiError(400, "no doc found ");
-  }
   const options = {
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
   };
-  // const video = await Video.aggregatePaginate(videoAggregate, options);
-  //pagination not done error take alot of time
+
+  // const videos = await Video.aggregatePaginate(videoAggregate, options);
+
   return res
     .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        videoAggregate,
-        "the search video is fetched successfully"
-      )
-    );
+    .json(new ApiResponse(200, videoAggregate , "Videos fetched successfully"));
 });
-
 export {
   publishVideo,
   getDetailVideoById,
