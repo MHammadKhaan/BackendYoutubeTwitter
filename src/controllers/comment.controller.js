@@ -105,11 +105,11 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(400, "content is required");
   }
 
-  const user = req.user?._id;
+  // const user = req.user?._id;
   const comment = await Comment.create({
     content,
     video: videoId,
-    owner: user,
+    owner: req.user._id,
   });
   if (!comment) {
     throw new ApiError(500, "failed to add comment ");
@@ -152,4 +152,46 @@ const updateComment = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, updateComment, "comment updated"));
 });
-export { getVideoComments, addComment, updateComment };
+
+const deleteComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  console.log("====================================");
+  console.log("delete");
+  console.log("====================================");
+  console.log("====================================");
+  console.log(commentId);
+  console.log("====================================");
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "invalid comment ID!!");
+  }
+  const comment = await Comment.findById(commentId);
+  if (!comment) {
+    throw new ApiError(400, "comment not found");
+  }
+  console.log("user ", req.user._id);
+  console.log("\nOwner", comment.owner);
+
+  if (req.user?._id.toString() !== comment.owner?.toString()) {
+    throw new ApiError(400, "only comment owner can delete the comment");
+  }
+
+  const deleteComment = await Comment.findByIdAndDelete(commentId);
+  await Like.deleteMany({
+    comment: commentId,
+    likeBy: req.user,
+  });
+  console.log(
+    "Deleted comment count",
+    Comment.deletedCount({ comment: commentId })
+  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { deleted: true, deletedCount: deleteComment.deletedCount },
+        "comment deleted"
+      )
+    );
+});
+export { getVideoComments, addComment, updateComment, deleteComment };

@@ -61,6 +61,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     flag = true;
   }
   const commentLikeCount = await Like.countDocuments({ comment: commentId });
+  Comment.$addFields({ commentLikeCount });
 
   return res.status(200).json(
     new ApiResponse(200, {
@@ -72,6 +73,8 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 const toggleTweetLike = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
   //: toggle like on tweet
+  console.log("tweetID",tweetId);
+  
   if (!isValidObjectId(tweetId)) {
     throw new ApiError(400, "Invalid tweet ID");
   }
@@ -93,10 +96,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
   const tweetLikeCount = Like.countDocuments({ tweet: tweetId });
   return res.status(200).json(
-    new ApiResponse(200, {
-      isTweetLike: flag,
-      tweetLikeCount: tweetLikeCount,
-    })
+    new ApiResponse(200,{tweetLike:flag},"tweet liked")
   );
 });
 
