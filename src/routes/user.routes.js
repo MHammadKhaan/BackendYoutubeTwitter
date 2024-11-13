@@ -11,11 +11,12 @@ import {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  verifyUserEmail,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 const router = Router();
-
+router.route("/verify-email/:token").get(verifyUserEmail);
 router.route("/register").post(
   upload.fields([
     {

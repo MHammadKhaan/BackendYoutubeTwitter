@@ -5,6 +5,9 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { sendEmail } from "../utils/mail.js";
+import crypto from "crypto";
+
 //get user details frm fronend depend on user model
 //validation--empty
 //check if user already exist
@@ -13,7 +16,35 @@ import mongoose from "mongoose";
 //emove pass and refesh token feild from response
 //check for user creation
 //return res
+const verifyUserEmail = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerificationExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: "Token is invalid or has expired" });
+  }
+
+  // Update verification status
+  user.isEmailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpiry = undefined;
+  await user.save();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { varification: user.isEmailVerified },
+        "user email verified"
+      )
+    );
+});
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -64,18 +95,52 @@ const registerUser = asyncHandler(async (req, res) => {
     coverImage: coverImage?.url || "",
     email,
     password,
+    isEmailVerified: false,
     username: username.toLowerCase(),
   });
+  /**
+   * unHashedToken: unHashed token is something we will send to the user's mail
+   * hashedToken: we will keep record of hashedToken to validate the unHashedToken in verify email controller
+   * tokenExpiry: Expiry to be checked before validating the incoming token
+   */
+  const { unHashedToken, HashToken, tokenExpiry } =
+    user.generateTemporaryToken();
+  console.log(
+    `unhash ${unHashedToken},hash ${HashToken},expiry ${tokenExpiry}`
+  );
+  /**
+   * assign hashedToken and tokenExpiry in DB till user clicks on email verification link
+   * The email verification is handled by {@link verifyEmail}
+   */
+  user.emailVerificationToken = HashToken;
+  user.emailVerificationExpiry = tokenExpiry;
+  await user.save({ validateBeforeSave: false });
+  await sendEmail({
+    email: user?.email,
+    subject: "Please verify your email",
+    fullName: user.fullName,
+    verificationUrl: `${req.protocol}://${req.get(
+      "host"
+    )}/api/v1/users/verify-email/${unHashedToken}`,
+  });
+
   const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
+    "-password -refreshToken -emailVerificationToken -emailVerificationExpiry "
   );
   if (!createdUser) {
     throw new ApiError(500, "registering user error");
   }
   return res
-    .status(201)
-    .json(new ApiResponse(201, createdUser, "User registered successfully"));
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        createdUser,
+        "User registered successfully and verification email has been sent on your email"
+      )
+    );
 });
+
 //User login
 const loginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
@@ -95,6 +160,8 @@ const loginUser = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
     user._id
   );
+
+  console.log("====================================");
 
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
@@ -412,6 +479,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 
 export {
   registerUser,
+  verifyUserEmail,
   loginUser,
   logoutUser,
   refreshAccessToken,
